@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { QuickPickItem, window, Disposable, CancellationToken, QuickInputButton, QuickInput, ExtensionContext } from 'vscode';
+import { QuickPickItem, window, Disposable, CancellationToken, QuickInputButton, QuickInput, ExtensionContext, QuickInputButtons, Uri } from 'vscode';
 
 /**
  * A multi-step input using window.createQuickPick() and window.createInputBox().
@@ -13,12 +13,12 @@ import { QuickPickItem, window, Disposable, CancellationToken, QuickInputButton,
 export async function multiStepInput(context: ExtensionContext) {
 
 	class MyButton implements QuickInputButton {
-		constructor(public iconPath: { light: string; dark: string; }, public tooltip: string) { }
+		constructor(public iconPath: { light: Uri; dark: Uri; }, public tooltip: string) { }
 	}
 
 	const createResourceGroupButton = new MyButton({
-		dark: context.asAbsolutePath('resources/dark/add.svg'),
-		light: context.asAbsolutePath('resources/light/add.svg')
+		dark: Uri.file(context.asAbsolutePath('resources/dark/add.svg')),
+		light: Uri.file(context.asAbsolutePath('resources/light/add.svg')),
 	}, 'Create Resource Group');
 
 	const resourceGroups: QuickPickItem[] = ['vscode-data-function', 'vscode-appservice-microservices', 'vscode-appservice-monitor', 'vscode-appservice-preview', 'vscode-appservice-prod']
@@ -216,12 +216,12 @@ class MultiStepInput {
 					input.activeItems = [activeItem];
 				}
 				input.buttons = [
-					...(this.steps.length > 1 ? [window.quickInputBackButton] : []),
+					...(this.steps.length > 1 ? [QuickInputButtons.Back] : []),
 					...(buttons || [])
 				];
 				disposables.push(
 					input.onDidTriggerButton(item => {
-						if (item === window.quickInputBackButton) {
+						if (item === QuickInputButtons.Back) {
 							reject(InputFlowAction.back);
 						} else {
 							resolve(<any>item);
@@ -257,13 +257,13 @@ class MultiStepInput {
 				input.value = value || '';
 				input.prompt = prompt;
 				input.buttons = [
-					...(this.steps.length > 1 ? [window.quickInputBackButton] : []),
+					...(this.steps.length > 1 ? [QuickInputButtons.Back] : []),
 					...(buttons || [])
 				];
 				let validating = validate('');
 				disposables.push(
 					input.onDidTriggerButton(item => {
-						if (item === window.quickInputBackButton) {
+						if (item === QuickInputButtons.Back) {
 							reject(InputFlowAction.back);
 						} else {
 							resolve(<any>item);

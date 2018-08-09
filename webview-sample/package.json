@@ -4,14 +4,15 @@
   "version": "0.0.1",
   "publisher": "ms-vscode",
   "engines": {
-    "vscode": "^1.23.0"
+    "vscode": "^1.25.0"
   },
   "categories": [
     "Other"
   ],
   "activationEvents": [
     "onCommand:catCoding.start",
-    "onCommand:catCoding.doRefactor"
+    "onCommand:catCoding.doRefactor",
+    "onWebviewPanel:catCoding"
   ],
   "main": "./out/src/extension",
   "contributes": {
@@ -35,11 +36,10 @@
     "postinstall": "node ./node_modules/vscode/bin/install"
   },
   "dependencies": {
-    "vscode": "^1.1.17"
+    "vscode": "^1.1.18"
   },
   "devDependencies": {
-    "@types/mocha": "^2.2.48",
-    "@types/node": "^9.4.6",
-    "typescript": "^2.7.2"
+    "@types/node": "^10.5.2",
+    "typescript": "^2.9.2"
   }
 }
