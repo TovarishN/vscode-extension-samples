@@ -7,8 +7,16 @@
 import {
 	createConnection, TextDocuments, TextDocument, Diagnostic, DiagnosticSeverity,
 	ProposedFeatures, InitializeParams, DidChangeConfigurationNotification, CompletionItem,
-	CompletionItemKind, TextDocumentPositionParams
+	CompletionItemKind, TextDocumentPositionParams, ErrorMessageTracker
 } from 'vscode-languageserver';
+
+import * as crypto from 'crypto';
+import * as childProcess from 'child_process';
+import { createPipe } from './nitra/NamedPipe';
+import { Subject } from 'rxjs';
+import { take, filter } from 'rxjs/operators';
+import * as Msg from './nitra/NitraMessages';
+import { Serialize } from './nitra/NitraSerialize';
 
 // Create a connection for the server. The connection uses Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
@@ -22,9 +30,17 @@ let hasConfigurationCapability: boolean = false;
 let hasWorkspaceFolderCapability: boolean = false;
 let hasDiagnosticRelatedInformationCapability: boolean = false;
 
+export type Unpacked<T> =
+	T extends (infer U)[] ? U :
+	T extends (...args: any[]) => infer U ? U :
+	T extends Promise<infer U> ? U :
+	T;
+
+let pipe: Unpacked<ReturnType<typeof createPipe>>;
 
 connection.onInitialize((params: InitializeParams) => {
 	let capabilities = params.capabilities;
+
 
 	// Does the client support the `workspace/configuration` request?
 	// If not, we will fall back using global settings
@@ -32,13 +48,61 @@ connection.onInitialize((params: InitializeParams) => {
 	hasWorkspaceFolderCapability = capabilities.workspace && !!capabilities.workspace.workspaceFolders;
 	hasDiagnosticRelatedInformationCapability = capabilities.textDocument && capabilities.textDocument.publishDiagnostics && capabilities.textDocument.publishDiagnostics.relatedInformation;
 
+	let key = crypto.randomBytes(16).toString('hex');
+	let name = `aaa-${key}`;
+	let cp = childProcess.spawn(`c:/work/nitra/bin/Debug/Stage1/Nitra.ClientServer.Server.exe`, [name], { shell: true, detached: false });
+	cp.on('close', (code, signal) => {
+		console.log(`closed ${code}, ${signal}`);
+	});
+	console.log(cp.pid, "spawned");
+
+	let subj = new Subject<string | Buffer>();
+	cp.stdout.on('data', (data) => {
+		console.log(`stdout: ${data}`);
+		subj.next(data);
+	})
+
+	subj.pipe(filter((val) => val.toString().indexOf("Attempting to connect to pipes..." ) != -1)
+			, take(1))
+		.subscribe(async x => {
+			console.log('create pipes');
+			//await timer(3000).toPromise();
+
+			pipe = await createPipe(name);
+
+			let cv = <Msg.CheckVersion_ClientMessage>{ MsgId: 42, assemblyVersionGuid: "76cd9b8c-5706-4ee3-ba38-0f47129322b1" };
+			pipe.syncRequest.next(Serialize(cv));
+
+			let solution = <Msg.SolutionStartLoading_ClientMessage>{ id: { Value: 1 }, fullPath: 'D:\\work\\nitratest\\New suite\\test-0000' };
+			pipe.syncRequest.next(Serialize(solution));
+
+			let project = <Msg.ProjectStartLoading_ClientMessage>{
+				id: { Value: 2 }
+				, fullPath: "D:\\work\\nitratest\\New suite\\test-0000\\test-0000"
+				, config: {
+					ProjectSupport: {
+						Caption: ""
+						, TypeFullName: ""
+						, Path: "D:\\work\\nitratest\\New suite"
+					}
+					, Languages: [{
+						Name: "AkkaExpressionLang"
+						, Path: "C:\\work\\olimpic\\akka-poc\\Sample.Grammar\\bin\\Debug\\akka_rule_parser.dll"
+						, DynamicExtensions: []
+					}]
+					, References: []
+				}
+			};
+			pipe.syncRequest.next(Serialize(project));
+		});
+
 	return {
 		capabilities: {
 			textDocumentSync: documents.syncKind,
-            // Tell the client that the server supports code completion
-            completionProvider: {
-                resolveProvider: true
-            }
+			// Tell the client that the server supports code completion
+			completionProvider: {
+				resolveProvider: true
+			}
 		}
 	}
 });
@@ -189,13 +253,14 @@ connection.onCompletionResolve((item: CompletionItem): CompletionItem => {
 	return item;
 });
 
-/*
 connection.onDidOpenTextDocument((params) => {
 	// A text document got opened in VSCode.
 	// params.uri uniquely identifies the document. For documents store on disk this is a file URI.
 	// params.text the initial full content of the document.
 	connection.console.log(`${params.textDocument.uri} opened.`);
 });
+
+/*
 connection.onDidChangeTextDocument((params) => {
 	// The content of a text document did change in VSCode.
 	// params.uri uniquely identifies the document.
