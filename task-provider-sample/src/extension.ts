@@ -2,8 +2,6 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
-'use strict';
-
 import * as path from 'path';
 import * as fs from 'fs';
 import * as cp from 'child_process';
@@ -22,7 +20,7 @@ export function activate(_context: vscode.ExtensionContext): void {
 	fileWatcher.onDidChange(() => rakePromise = undefined);
 	fileWatcher.onDidCreate(() => rakePromise = undefined);
 	fileWatcher.onDidDelete(() => rakePromise = undefined);
-	taskProvider = vscode.workspace.registerTaskProvider('rake', {
+	taskProvider = vscode.tasks.registerTaskProvider('rake', {
 		provideTasks: () => {
 			if (!rakePromise) {
 				rakePromise = getRakeTasks();
@@ -69,7 +67,14 @@ function getOutputChannel(): vscode.OutputChannel {
 }
 
 interface RakeTaskDefinition extends vscode.TaskDefinition {
+	/**
+	 * The task name
+	 */
 	task: string;
+
+	/**
+	 * The rake file containing the task
+	 */
 	file?: string;
 }
 

@@ -1,12 +1,11 @@
 'use strict';
 
 import * as vscode from 'vscode';
-import * as fs from 'fs';
 import { MemFS } from './fileSystemProvider';
 
 export function activate(context: vscode.ExtensionContext) {
 
-    console.log('MemFS says "Hello"')
+    console.log('MemFS says "Hello"');
 
     const memFs = new MemFS();
     context.subscriptions.push(vscode.workspace.registerFileSystemProvider('memfs', memFs, { isCaseSensitive: true }));
