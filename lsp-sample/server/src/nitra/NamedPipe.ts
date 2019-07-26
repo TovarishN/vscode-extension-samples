@@ -50,7 +50,7 @@ async function connect(pipe: string): Promise<net.Socket> {
 async function createResponsePipe(pipe: string): Promise<Rx.Observable<Message>> {
 	let res = new Rx.Subject<Message>();
 
-	let curMsg: Message = null;
+	let curMsg: Message | null = null;
 	let funStack: DesFun[] = [];
 
 	let conn = await connect(pipe);
@@ -66,7 +66,7 @@ async function createResponsePipe(pipe: string): Promise<Rx.Observable<Message>>
 			return;
 		}
 
-		if (funStack.length > 0) {
+		if (funStack && funStack.length > 0) {
 			funStack = funStack.shift()(data, funStack);
 		}
 

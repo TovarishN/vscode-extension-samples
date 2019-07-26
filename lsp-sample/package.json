@@ -32,7 +32,7 @@
 					"description": "Controls the maximum number of problems produced by the server."
 				},
 				"languageServerExample.trace.server": {
-					"scope": "window",
+					"scope": "application",
 					"type": "string",
 					"enum": [
 						"off",
@@ -57,5 +57,8 @@
 		"@types/node": "^8.0.0",
 		"tslint": "^5.16.0",
 		"typescript": "^3.5.1"
+	},
+	"dependencies": {
+		"debug": "^4.1.1"
 	}
 }

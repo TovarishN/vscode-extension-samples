@@ -17,13 +17,17 @@ import {
 let client: LanguageClient;
 
 export function activate(context: ExtensionContext) {
+
+	console.log("extension client start");
 	// The server is implemented in node
 	let serverModule = context.asAbsolutePath(
 		path.join('server', 'out', 'server.js')
 	);
 	// The debug options for the server
 	// --inspect=6009: runs the server in Node's Inspector mode so VS Code can attach to the server for debugging
-	let debugOptions = { execArgv: ['--nolazy', '--inspect=6009'] };
+	let debugOptions = { execArgv: ['--nolazy'
+		, '--inspect=6009'
+	]};
 
 	// If the extension is launched in debug mode then the debug server options are used
 	// Otherwise the run options are used
