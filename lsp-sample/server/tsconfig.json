@@ -4,10 +4,10 @@
 		"module": "commonjs",
 		"moduleResolution": "node",
 		"sourceMap": true,
-		"strict": false,
+		//"strict": false,
 		"outDir": "out",
 		"rootDir": "src",
-		"strictNullChecks": false
+		//"strictNullChecks": false
 	},
 	"include": ["src"],
 	"exclude": ["node_modules", ".vscode-test"]

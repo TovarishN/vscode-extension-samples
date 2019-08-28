@@ -14,7 +14,7 @@
 	DidChangeConfigurationNotification,
 	CompletionItem,
 	CompletionItemKind,
-	TextDocumentPositionParams
+	TextDocumentPositionParams 
 } from 'vscode-languageserver';
 
 import * as crypto from 'crypto';
@@ -24,11 +24,12 @@ import { Subject, timer } from 'rxjs';
 import { take, filter, delay } from 'rxjs/operators';
 import * as Msg from './nitra/NitraMessages';
 import { Serialize } from './nitra/NitraSerialize';
-import { debug } from 'util';
+import { debug, log, print } from 'util';
 
 // Create a connection for the server. The connection uses Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
 let connection = createConnection(ProposedFeatures.all);
+//let connection = createConnection(process.stdin, process.stdout);
 
 // console.log = connection.console.log.bind(connection.console);
 // console.error = connection.console.error.bind(connection.console);
@@ -50,7 +51,7 @@ export type Unpacked<T> =
 let pipe: Unpacked<ReturnType<typeof createPipe>>;
 
 connection.onInitialize((params: InitializeParams) => {
-	let capabilities = params.capabilities;
+	let capabilities = params.capabilities; 
 
 	
 
@@ -63,50 +64,53 @@ connection.onInitialize((params: InitializeParams) => {
 												capabilities.textDocument.publishDiagnostics.relatedInformation);
 
 	//delay(5000);
-	console.log("begin");
+	process.stdout.write("begin");
 	
 
 	let key = crypto.randomBytes(16).toString('hex');
 	let name = `aaa-${key}`;
-	let cp = childProcess.spawn(`c:/work/nitra/bin/Debug/Stage1/Nitra.ClientServer.Server.exe`, [name], { shell: true, detached: false });
+	let cp = childProcess.spawn(`c:/work/nitra/bin/Debug/Stage1/Nitra.ClientServer.Server.exe`, [name],
+					 { shell: true, detached: false });
 
 	cp.on('close', (code, signal) => {
-		console.log(`closed ${code}, ${signal}`);
+		process.stdout.write(`closed ${code}, ${signal}`);
 	});
 	//console.log(cp.pid, "spawned");
 
 
 	let subj = new Subject<string | Buffer>();
 	cp.stdout.on('data', (data) => {
-		console.log(`stdout: ${data}`);
+		//console.log(`stdout: ${data}`); 
+		process.stdout.write(`${data}`);
+
 		subj.next(data);
 	})
 
 	subj.pipe(filter((val) => val.toString().indexOf("Attempting to connect to pipes..." ) != -1)
 			, take(1))
 		.subscribe(async x => {
-			console.log('create pipes');
+			process.stdout.write('create pipes');
 			await timer(5000).toPromise();
 
-			pipe = await createPipe(name);
+			pipe = await createPipe(name); 
 
-			let cv = <Msg.CheckVersion_ClientMessage>{ MsgId: 42, assemblyVersionGuid: "76cd9b8c-5706-4ee3-ba38-0f47129322b1" };
+			let cv = <Msg.CheckVersion_ClientMessage>{ MsgId: 42, assemblyVersionGuid: "492b753f-699b-4aef-9edd-749e19870df3" };
 			pipe.syncRequest.next(Serialize(cv));
 
-			let solution = <Msg.SolutionStartLoading_ClientMessage>{ id: { Value: 1 }, fullPath: 'D:\\work\\tdltest\\New suite\\test-0000' };
+			let solution = <Msg.SolutionStartLoading_ClientMessage>{ id: { Value: 1 }, fullPath: 'C:\\work\\tdltest\\New suite\\test-0000' };
 			pipe.syncRequest.next(Serialize(solution));
 
 			let project = <Msg.ProjectStartLoading_ClientMessage>{
 				MsgId: 46,
 				id: { Value: 2 }
-				, fullPath: "D:\\work\\tdltest\\New suite\\test-0000\\test-0000"
+				, fullPath: "c:\\work\\tdltest\\New suite\\test-0000\\test-0000"
 				, config: {
 					MsgId: 126,
 					ProjectSupport: {
 						MsgId: 125,
 						Caption: "" 
 						, TypeFullName: ""
-						, Path: "D:\\work\\tdltest\\New suite"
+						, Path: "c:\\work\\tdltest\\New suite"
 					}
 					, Languages: [{
 						MsgId: 128,
