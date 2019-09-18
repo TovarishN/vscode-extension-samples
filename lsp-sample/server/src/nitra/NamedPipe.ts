@@ -18,7 +18,7 @@ export async function createPipe(name: string): Promise<{
 
 		let requestObserver = new Rx.Subject<Buffer>();
 
-		process.stdout.write("try connect to response");
+		process.stdout.write("try connect to response");process.stdout.write('\r\n');
 
 		let connOut = await connect(requestPipe);
 		requestObserver.subscribe(data => {
@@ -32,13 +32,13 @@ export async function createPipe(name: string): Promise<{
 		return { syncResponse: responseObservable, asyncResponse: responseAsyncObservable, syncRequest: requestObserver }
 	}
 	catch (e) {
-		process.stdout.write("error!!! ", e);
+		process.stdout.write("error!!! ", e);process.stdout.write('\r\n');
 		return { syncResponse: null, syncRequest: null, asyncResponse: null };
 	}
 }
 
 async function connect(pipe: string): Promise<net.Socket> {
-	let socket = net.connect(pipe, () => { process.stdout.write(`${pipe} connection listener!`); });
+	let socket = net.connect(pipe, () => { process.stdout.write(`${pipe} connection listener!`);process.stdout.write('\r\n'); });
 	return new Promise<net.Socket>((resolve, _reject) => {
 		socket.on('connect', () => { resolve(socket); });
 		socket.on('error', (_ex) => {

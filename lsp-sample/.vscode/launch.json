@@ -22,7 +22,7 @@
 			"restart": true,
 			"outFiles": ["${workspaceRoot}/server/out/**/*.js"],
 			"protocol": "inspector"
-			//, "trace": true
+			//, "trace": trues
 			//"debugServer": 6009
 
 		},

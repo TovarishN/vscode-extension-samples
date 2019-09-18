@@ -3,7 +3,7 @@
  * Licensed under the MIT License. See License.txt in the project root for license information.
  * ------------------------------------------------------------------------------------------ */
 
- import {
+import {
 	createConnection,
 	TextDocuments,
 	TextDocument,
@@ -14,7 +14,7 @@
 	DidChangeConfigurationNotification,
 	CompletionItem,
 	CompletionItemKind,
-	TextDocumentPositionParams 
+	TextDocumentPositionParams
 } from 'vscode-languageserver';
 
 import * as crypto from 'crypto';
@@ -50,87 +50,118 @@ export type Unpacked<T> =
 
 let pipe: Unpacked<ReturnType<typeof createPipe>>;
 
-connection.onInitialize((params: InitializeParams) => {
-	let capabilities = params.capabilities; 
+connection.onInitialize(async (params: InitializeParams) => {
+	let capabilities = params.capabilities;
 
-	
+
 
 	// Does the client support the `workspace/configuration` request?
 	// If not, we will fall back using global settings
 	hasConfigurationCapability = !!(capabilities.workspace && !!capabilities.workspace.configuration);
 	hasWorkspaceFolderCapability = !!(capabilities.workspace && !!capabilities.workspace.workspaceFolders);
 	hasDiagnosticRelatedInformationCapability = !!(capabilities.textDocument &&
-												capabilities.textDocument.publishDiagnostics &&
-												capabilities.textDocument.publishDiagnostics.relatedInformation);
+		capabilities.textDocument.publishDiagnostics &&
+		capabilities.textDocument.publishDiagnostics.relatedInformation);
 
 	//delay(5000);
-	process.stdout.write("begin");
-	
+	process.stdout.write("begin"); process.stdout.write('\r\n');
+
 
 	let key = crypto.randomBytes(16).toString('hex');
-	let name = `aaa-${key}`;
-	let cp = childProcess.spawn(`c:/work/nitra/bin/Debug/Stage1/Nitra.ClientServer.Server.exe`, [name],
-					 { shell: true, detached: false });
+	//let name = `aaa-${key}`;
+	let name = `aaa`;
+	// let cp = childProcess.spawn(`c:/work/nitra/bin/Debug/Stage1/Nitra.ClientServer.Server.exe`, [name],
+	// 				 { shell: true, detached: false });
 
-	cp.on('close', (code, signal) => {
-		process.stdout.write(`closed ${code}, ${signal}`);
+	// cp.on('close', (code, signal) => {
+	// 	process.stdout.write(`closed ${code}, ${signal}`);
+	// });
+	// //console.log(cp.pid, "spawned");
+
+
+	//let subj = new Subject<string | Buffer>();
+	// cp.stdout.on('data', (data) => {
+	// 	//console.log(`stdout: ${data}`); 
+	// 	process.stdout.write(`${data}`);
+
+	// 	subj.next(data);
+	// })
+
+	pipe = await createPipe(name);
+	pipe.asyncResponse.subscribe(x => {
+		process.stdout.write(JSON.stringify(x));
+		process.stdout.write('\r\n');
+
 	});
-	//console.log(cp.pid, "spawned");
+
+	// subj.pipe(filter((val) => val.toString().indexOf("Attempting to connect to pipes..." ) != -1)
+	// 		, take(1))
+	// 	.subscribe(async x => {
+	process.stdout.write('create pipes'); process.stdout.write('\r\n');
+	await timer(5000).toPromise();
 
 
-	let subj = new Subject<string | Buffer>();
-	cp.stdout.on('data', (data) => {
-		//console.log(`stdout: ${data}`); 
-		process.stdout.write(`${data}`);
 
-		subj.next(data);
-	})
+	let cv = <Msg.CheckVersion_ClientMessage>{ MsgId: 42, assemblyVersionGuid: "e8bcf8b6-1d46-4e3c-b43f-51284d48bee2" };
+	pipe.syncRequest.next(Serialize(cv));
 
-	subj.pipe(filter((val) => val.toString().indexOf("Attempting to connect to pipes..." ) != -1)
-			, take(1))
-		.subscribe(async x => {
-			process.stdout.write('create pipes');
-			await timer(5000).toPromise();
+	let solution = <Msg.SolutionStartLoading_ClientMessage>{ MsgId: 43, id: { Value: 1 }, fullPath: `C:\\work\\tdltest\\New suite\\test-0000` };
+	pipe.syncRequest.next(Serialize(solution));
 
-			pipe = await createPipe(name); 
 
-			let cv = <Msg.CheckVersion_ClientMessage>{ MsgId: 42, assemblyVersionGuid: "492b753f-699b-4aef-9edd-749e19870df3" };
-			pipe.syncRequest.next(Serialize(cv));
+	let project = <Msg.ProjectStartLoading_ClientMessage>{
+		MsgId: 46,
+		id: { Value: 2 }
+		, fullPath: `c:\\work\\tdltest\\New suite\\test-0000\\test-0000`
+		, config: {
+			MsgId: 127
+			, ProjectSupport: { MsgId: 126, Caption: "TdlLang", TypeFullName: "Tdl.ProjectSupport", Path: `C:\\work\\Nitra-TDL\\bin\\Debug\\Tdl.dll` }
+			, Languages: [{ MsgId: 129, Name: "TdlLang", Path: `C:\\work\\Nitra-TDL\\bin\\Debug\\tdl.dll`, DynamicExtensions: [] }]
+			, References: ["FullName:mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089"
+				, "FullName:System, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089"
+				, "FullName:System.Core, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089"]
+		}
+	};
+	pipe.syncRequest.next(Serialize(project));
 
-			let solution = <Msg.SolutionStartLoading_ClientMessage>{ id: { Value: 1 }, fullPath: 'C:\\work\\tdltest\\New suite\\test-0000' };
-			pipe.syncRequest.next(Serialize(solution));
+	project.config.References.forEach(x => {
+		var refMsg = <Msg.ReferenceLoaded_ClientMessage>{
+			MsgId: 52
+			, projectId: { Value: 2 }
+			, name: x
+		};
+		pipe.syncRequest.next(Serialize(refMsg));
+	});
 
-			let project = <Msg.ProjectStartLoading_ClientMessage>{
-				MsgId: 46,
-				id: { Value: 2 }
-				, fullPath: "c:\\work\\tdltest\\New suite\\test-0000\\test-0000"
-				, config: {
-					MsgId: 126,
-					ProjectSupport: {
-						MsgId: 125,
-						Caption: "" 
-						, TypeFullName: ""
-						, Path: "c:\\work\\tdltest\\New suite"
-					}
-					, Languages: [{
-						MsgId: 128,
-						Name: "TdlLang"
-						, Path: "C:\\work\\Nitra-TDL\\bin\\Debug\\tdl.dll"
-						, DynamicExtensions: []
-					}]
-					, References: []
-				}
-			};
-			pipe.syncRequest.next(Serialize(project));
-		});
+	var fileMsg = <Msg.FileLoaded_ClientMessage>{
+		MsgId: 55
+		, fullPath: "C:\\work\\tdltest\\New suite\\test-0000\\test-0000\\test-0000.test"
+		, id: { Value: 3 }
+		, version: { Value: 0 }
+		, projectId: { Value: 2 }
+		, contentOpt: ""
+		, hasContent: false
+	};
+	pipe.syncRequest.next(Serialize(fileMsg));
+
+	var projectLoadedMsg = <Msg.ProjectLoaded_ClientMessage>{ MsgId: 47, id: { Value: 2 } };
+	pipe.syncRequest.next(Serialize(projectLoadedMsg));
+
+	var solutionLoadedMsg = <Msg.SolutionLoaded_ClientMessage>{ MsgId: 44, id: { Value: 1 } };
+	pipe.syncRequest.next(Serialize(solutionLoadedMsg));
+
+	var fileActivatedMsg = <Msg.FileActivated_ClientMessage>{ MsgId: 60, id: { Value: 3 }, projectId: { Value: 2 }, version: { Value: 0 } };
+	pipe.syncRequest.next(Serialize(fileActivatedMsg));
+
+
+	// });
 
 	return {
 		capabilities: {
-			textDocumentSync: documents.syncKind,
+			textDocumentSync: documents.syncKind
 			// Tell the client that the server supports code completion
-			completionProvider: {
-				resolveProvider: true
-			}
+			, completionProvider: { resolveProvider: true }
+
 		}
 	};
 });
@@ -392,3 +423,19 @@ connection.onCompletionResolve(
 	}
 );
 
+// 100 - 100*0.05=95
+// 100* (1 - 0.05)
+// 0.35 * 1.05=0.3675
+// 95 * 0.35=33.25
+// 100 - 36.75=63.
+// 95 - 33.25=61.7525
+// 100 - 100 * 0.95 * 0.35=66.75
+
+// 1 - (0.95 - 0.95*0.5)=0.525
+// 1 - 0.6175=0.3825
+// 0.3825 / 0.35=1.092857
+// 0.35 / 0.3825=0.915033
+
+// 200 - 200*0.05=190
+// 123.5
+// 
