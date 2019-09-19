@@ -12,10 +12,6 @@ export function activate(context: vscode.ExtensionContext) {
 	// vscode.window.onDidOpenTerminal
 	vscode.window.onDidOpenTerminal(terminal => {
 		console.log("Terminal opened. Total count: " + (<any>vscode.window).terminals.length);
-
-		(<any>terminal).onDidWriteData((data: any) => {
-			console.log("Terminal data: ", data);
-		});
 	});
 	vscode.window.onDidOpenTerminal((terminal: vscode.Terminal) => {
 		vscode.window.showInformationMessage(`onDidOpenTerminal, name: ${terminal.name}`);
@@ -135,16 +131,11 @@ export function activate(context: vscode.ExtensionContext) {
 
 	// vvv Proposed APIs below vvv
 
-	// vscode.window.onDidWriteData
-	context.subscriptions.push(vscode.commands.registerCommand('terminalTest.onDidWriteData', () => {
-		selectTerminal().then(terminal => {
-			if (!terminal) {
-				return;
-			}
-			vscode.window.showInformationMessage(`onDidWriteData listener attached for terminal: ${terminal.name}, check the devtools console to see events`);
-			(<any>terminal).onDidWriteData((data: string) => {
-				console.log('onDidWriteData: ' + data);
-			});
+	// vscode.window.onDidWriteTerminalData
+	context.subscriptions.push(vscode.commands.registerCommand('terminalTest.onDidWriteTerminalData', () => {
+		(<any>vscode.window).onDidWriteTerminalData((e: any) => {
+			vscode.window.showInformationMessage(`onDidWriteTerminalData listener attached, check the devtools console to see events`);
+			console.log('onDidWriteData', e);
 		});
 	}));
 
@@ -153,71 +144,6 @@ export function activate(context: vscode.ExtensionContext) {
 		vscode.window.showInformationMessage(`Listening to onDidChangeTerminalDimensions, check the devtools console to see events`);
 		(<any>vscode.window).onDidChangeTerminalDimensions((event: any) => {
 			console.log(`onDidChangeTerminalDimensions: terminal:${event.terminal.name}, columns=${event.dimensions.columns}, rows=${event.dimensions.rows}`);
-		});
-	}));
-
-	let renderer: any | undefined;
-	context.subscriptions.push(vscode.commands.registerCommand('terminalTest.terminalRendererCreate', () => {
-		renderer = (<any>vscode.window).createTerminalRenderer('renderer');
-		renderer.write(colorText('~~~ Hello world! ~~~'));
-		renderer.onDidChangeMaximumDimensions((dim: any) => {
-			console.log(`Maximum dimensions for renderer changed: columns=${dim.columns}, rows=${dim.rows}`);
-		});
-	}));
-	context.subscriptions.push(vscode.commands.registerCommand('terminalTest.terminalRendererName', () => {
-		if (!renderer) {
-			return;
-		}
-		vscode.window.showInputBox({ placeHolder: "Enter a new name" }).then(value => {
-			if (!value) {
-				return;
-			}
-			renderer.name = value;
-		});
-	}));
-	context.subscriptions.push(vscode.commands.registerCommand('terminalTest.terminalRendererWrite', () => {
-		if (!renderer) {
-			return;
-		}
-		vscode.window.showInputBox({ placeHolder: "Enter text to write" }).then(value => {
-			if (!value) {
-				return;
-			}
-			// Note that entering characters like `\r` in the input box will result in `\\r` being written
-			renderer.write(value);
-		});
-	}));
-	context.subscriptions.push(vscode.commands.registerCommand('terminalTest.createFakeShell', () => {
-		const shell = (<any>vscode.window).createTerminalRenderer('fake shell');
-		shell.write('Type and press enter to echo the text\r\n\r\n');
-		let line = '';
-		shell.onDidAcceptInput((data: any) => {
-			if (data === '\r') {
-				shell.write(`\r\necho: "${colorText(line)}"\r\n\n`);
-				line = '';
-				return;
-			}
-			line += data;
-			shell.write(data);
-		});
-		shell.terminal.show();
-	}));
-	context.subscriptions.push(vscode.commands.registerCommand('terminalTest.maximumDimensions', () => {
-		renderer.maximumDimensions.then((dimensions: any) => {
-			vscode.window.showInformationMessage(`TerminalRenderer.maximumDimensions: columns=${dimensions.columns}, rows=${dimensions.rows}`);
-		});
-	}));
-	context.subscriptions.push(vscode.commands.registerCommand('terminalTest.dimensions', () => {
-		vscode.window.showInputBox({ placeHolder: "Enter columns" }).then(columns => {
-			if (!columns) {
-				return;
-			}
-			vscode.window.showInputBox({ placeHolder: "Enter rows" }).then(rows => {
-				if (!rows) {
-					return;
-				}
-				renderer.dimensions = { columns: parseInt(columns, 10), rows: parseInt(rows, 10) };
-			});
 		});
 	}));
 }
