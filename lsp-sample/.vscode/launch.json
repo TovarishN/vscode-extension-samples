@@ -12,7 +12,7 @@
 			"preLaunchTask": {
 				"type": "npm",
 				"script": "watch"
-			}
+			} 
 		},
 		{
 			"type": "node",
@@ -21,7 +21,7 @@
 			"port": 6009,
 			"restart": true,
 			"outFiles": ["${workspaceRoot}/server/out/**/*.js"],
-			"protocol": "inspector"
+			// "protocol": "inspector"
 			//, "trace": trues
 			//"debugServer": 6009
 

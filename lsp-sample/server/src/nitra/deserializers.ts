@@ -1,5 +1,6 @@
 //import Int64 = require('node-int64');
 import { Message } from './NitraMessages';
+import { GetDeserializer } from './NitraDeserialize';
 
 export type DesFun = (buf: Buffer, stack: DesFun[]) => DesFun[];
 
@@ -13,6 +14,40 @@ export function GetStringArrayDeserializer(arr: string[], index: number): DesFun
     retStack.push((buf, stack) => { arr[index] = buf.toString(); return stack; });
     return retStack;
 }
+
+
+export function GetCompleteWordArrayDeserializer(arr: Message[], size: number): DesFun[] {
+    let retStack: DesFun[] = [];
+    PushRecurcive(arr, size, retStack);
+     //for(let i = 0; i < size; i++)
+     //{
+    //     let curMsg: Message = <Message>{};
+    //     retStack.push((buf, stack) => { 
+    //         curMsg.MsgId = <Message["MsgId"]>buf.readInt16LE(0); 
+    //         arr.push(curMsg);
+    //         stack.push(...GetDeserializer(curMsg));
+    //         return stack; 
+    //     });
+        
+    //     // retStack.push((buf, stack) => { 
+    //     //     stack.push(...GetDeserializer(curMsg)); return stack;
+    //     // });
+    //}
+    return retStack;
+}
+
+function PushRecurcive(arr: Message[], sizeLeft: number, retStack: DesFun[]) : void {
+    retStack.push((buf, stack) => {
+        let curMsg: Message = <Message>{}; 
+        curMsg.MsgId = <Message["MsgId"]>buf.readInt16LE(0); 
+        arr.push(curMsg);
+        stack.push(...GetDeserializer(curMsg));
+        if(sizeLeft - 1 > 0)
+            PushRecurcive(arr, sizeLeft-1, stack);
+        return stack; 
+    });
+} 
+
 
 export function StringDeserializer(buf:Buffer, stack:DesFun[], setter : (str: string) => void, getter : () => string) : DesFun[] {
 

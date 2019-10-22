@@ -14,6 +14,7 @@ import {
 	DidChangeConfigurationNotification,
 	CompletionItem,
 	CompletionItemKind,
+	DocumentHighlight,
 	TextDocumentPositionParams
 } from 'vscode-languageserver';
 
@@ -87,22 +88,27 @@ connection.onInitialize(async (params: InitializeParams) => {
 	// 	subj.next(data);
 	// })
 
-	pipe = await createPipe(name);
+	pipe = await createPipe(name); 
 	pipe.asyncResponse.subscribe(x => {
 		process.stdout.write(JSON.stringify(x));
 		process.stdout.write('\r\n');
 
 	});
 
+	pipe.syncResponse.subscribe( x=> {
+		process.stdout.write(JSON.stringify(x));
+		process.stdout.write('\r\n');
+	});
+
 	// subj.pipe(filter((val) => val.toString().indexOf("Attempting to connect to pipes..." ) != -1)
 	// 		, take(1))
 	// 	.subscribe(async x => {
 	process.stdout.write('create pipes'); process.stdout.write('\r\n');
-	await timer(5000).toPromise();
+	//await timer(5000).toPromise();
 
 
 
-	let cv = <Msg.CheckVersion_ClientMessage>{ MsgId: 42, assemblyVersionGuid: "e8bcf8b6-1d46-4e3c-b43f-51284d48bee2" };
+	let cv = <Msg.CheckVersion_ClientMessage>{ MsgId: 42, assemblyVersionGuid: "45b8bf7d-4b94-41cc-8265-a35fdf88eb06" };
 	pipe.syncRequest.next(Serialize(cv));
 
 	let solution = <Msg.SolutionStartLoading_ClientMessage>{ MsgId: 43, id: { Value: 1 }, fullPath: `C:\\work\\tdltest\\New suite\\test-0000` };
@@ -217,25 +223,6 @@ connection.onDidChangeWatchedFiles(_change => {
 });
 
 // This handler provides the initial list of the completion items.
-connection.onCompletion(
-	(_textDocumentPosition: TextDocumentPositionParams): CompletionItem[] => {
-		// The pass parameter contains the position of the text document in
-		// which code complete got requested. For the example we ignore this
-		// info and always provide the same completion items.
-		return [
-			{
-				label: 'TypeScript',
-				kind: CompletionItemKind.Text,
-				data: 1
-			},
-			{
-				label: 'JavaScript',
-				kind: CompletionItemKind.Text,
-				data: 2
-			}
-		];
-	}
-);
 
 // This handler resolve additional information for the item selected in
 // the completion list.
@@ -387,41 +374,42 @@ connection.onDidChangeWatchedFiles(_change => {
 	connection.console.log('We received an file change event');
 });
 
+function completionTest(): CompletionItem[] {
+	return [
+		{
+			label: 'TypeScriptAsync',
+			kind: CompletionItemKind.Text,
+			data: 1
+		},
+		{
+			label: 'JavaScriptAsync',
+			kind: CompletionItemKind.Text,
+			data: 2
+		}
+	];
+} 
+
 // This handler provides the initial list of the completion items.
 connection.onCompletion(
 	(_textDocumentPosition: TextDocumentPositionParams): CompletionItem[] => {
-		// The pass parameter contains the position of the text document in
-		// which code complete got requested. For the example we ignore this
-		// info and always provide the same completion items.
-		return [
-			{
-				label: 'TypeScript',
-				kind: CompletionItemKind.Text,
-				data: 1
-			},
-			{
-				label: 'JavaScript',
-				kind: CompletionItemKind.Text,
-				data: 2
-			}
-		];
+
+		var completeWordMsg = <Msg.CompleteWord_ClientMessage>{
+			MsgId:65,
+			id: {Value: 3},
+			projectId: {Value:2},
+			version: {Value: 0},
+			pos: _textDocumentPosition.position.character
+		};
+
+		pipe.syncRequest.next(Serialize(completeWordMsg));
+
+		return completionTest();
 	}
 );
 
-// This handler resolves additional information for the item selected in
-// the completion list.
-connection.onCompletionResolve(
-	(item: CompletionItem): CompletionItem => {
-		if (item.data === 1) {
-			item.detail = 'TypeScript details';
-			item.documentation = 'TypeScript documentation';
-		} else if (item.data === 2) {
-			item.detail = 'JavaScript details';
-			item.documentation = 'JavaScript documentation';
-		}
-		return item;
-	}
-);
+// connection.onDocumentHighlight((_textDocumentPositionParams: TextDocumentPositionParams) : DocumentHighlight[] => {
+// 	return [{}];
+// });
 
 // 100 - 100*0.05=95
 // 100* (1 - 0.05)
