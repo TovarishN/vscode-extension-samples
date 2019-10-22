@@ -1,5 +1,5 @@
 //import Int64 = require('node-int64');
-import { Message } from './NitraMessages';
+import { Message, FileChange, ObjectDescriptor } from './NitraMessages';
 import { GetDeserializer } from './NitraDeserialize';
 
 export type DesFun = (buf: Buffer, stack: DesFun[]) => DesFun[];
@@ -16,7 +16,7 @@ export function GetStringArrayDeserializer(arr: string[], index: number): DesFun
 }
 
 
-export function GetCompleteWordArrayDeserializer(arr: Message[], size: number): DesFun[] {
+export function GetCompletionElemArrayDeserializer(arr: Message[], size: number): DesFun[] {
     let retStack: DesFun[] = [];
     PushRecurcive(arr, size, retStack);
      //for(let i = 0; i < size; i++)
@@ -48,6 +48,35 @@ function PushRecurcive(arr: Message[], sizeLeft: number, retStack: DesFun[]) : v
     });
 } 
 
+export function GetFileChangeArrayDeserializer(arr: FileChange[], length: number) : DesFun[] {
+    let ret: DesFun[] = [];
+    for(let i = 0; i < length; i++) {
+        ret.push((buf,stack) => { 
+            let curMsg : Message = <Message>{};
+            curMsg.MsgId = <Message["MsgId"]>buf.readInt16LE(0); 
+            arr.push(<FileChange>curMsg);
+            return stack; 
+        });
+        ret.push(...GetDeserializer(arr[i]))
+    }
+
+    return ret;
+}
+
+export function GetObjectDescriptorArrayDeserializer(arr: ObjectDescriptor[], length: number) : DesFun[] {
+    let ret: DesFun[] = [];
+    for(let i = 0; i < length; i++) {
+        ret.push((buf,stack) => { 
+            let curMsg : Message = <Message>{};
+            curMsg.MsgId = <Message["MsgId"]>buf.readInt16LE(0); 
+            arr.push(<ObjectDescriptor>curMsg);
+            return stack; 
+        });
+        ret.push(...GetDeserializer(arr[i]))
+    }
+
+    return ret;
+}
 
 export function StringDeserializer(buf:Buffer, stack:DesFun[], setter : (str: string) => void, getter : () => string) : DesFun[] {
 
