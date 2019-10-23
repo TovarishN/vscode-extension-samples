@@ -15,7 +15,11 @@ import {
 	CompletionItem,
 	CompletionItemKind,
 	DocumentHighlight,
-	TextDocumentPositionParams
+	TextDocumentPositionParams,
+	DocumentHighlightKind,
+	ColorPresentation,
+	ColorInformation,
+	DocumentColorParams
 } from 'vscode-languageserver';
 
 import * as crypto from 'crypto';
@@ -51,6 +55,8 @@ export type Unpacked<T> =
 
 let pipe: Unpacked<ReturnType<typeof createPipe>>;
 
+let completionSubject: Subject<CompletionItem[]>;
+
 connection.onInitialize(async (params: InitializeParams) => {
 	let capabilities = params.capabilities;
 
@@ -64,16 +70,28 @@ connection.onInitialize(async (params: InitializeParams) => {
 		capabilities.textDocument.publishDiagnostics &&
 		capabilities.textDocument.publishDiagnostics.relatedInformation);
 
-	//delay(5000);
+	await delay(5000);
 	process.stdout.write("begin"); process.stdout.write('\r\n');
 
 
-	let key = crypto.randomBytes(16).toString('hex');
+	//let key = crypto.randomBytes(16).toString('hex');
 	//let name = `aaa-${key}`;
 	let name = `aaa`;
 	// let cp = childProcess.spawn(`c:/work/nitra/bin/Debug/Stage1/Nitra.ClientServer.Server.exe`, [name],
 	// 				 { shell: true, detached: false });
 
+	// let nitraServerStartedSubject = new Subject<string>();
+	// let cp = childProcess.exec(`start c:/work/nitra/bin/Debug/Stage1/Nitra.ClientServer.Server.exe aaa`
+	// 							, function callback(error, stdout, stderr) {
+	// 								let a = 0;
+	// 							});
+	// cp.on('message', (message, handle) => {
+	// 	nitraServerStartedSubject.next(message);
+	// });
+
+	//let serverStartedPromise = nitraServerStartedSubject.pipe(filter((a,b) => a === 'Attempting to connect to pipes...'), take(1)).toPromise();
+	//await delay(20000);
+	//let started = await serverStartedPromise;
 	// cp.on('close', (code, signal) => {
 	// 	process.stdout.write(`closed ${code}, ${signal}`);
 	// });
@@ -93,6 +111,24 @@ connection.onInitialize(async (params: InitializeParams) => {
 		process.stdout.write(JSON.stringify(x));
 		process.stdout.write('\r\n');
 
+		switch(x.MsgId) {
+			case 93: {
+
+				break;
+			}
+			case 109:
+				{
+					let list = x.completionList.map(a => {
+						switch(a.MsgId) {
+							case 132: return <CompletionItem>{label: a.text, kind: CompletionItemKind.Keyword, detail: a.description};
+							case 133: return <CompletionItem>{label: a.name, kind: CompletionItemKind.Property, detail: a.description};
+						}
+					});
+					completionSubject.next(list);
+					completionSubject.complete();
+					break;
+				}
+		}
 	});
 
 	pipe.syncResponse.subscribe( x=> {
@@ -167,6 +203,8 @@ connection.onInitialize(async (params: InitializeParams) => {
 			textDocumentSync: documents.syncKind
 			// Tell the client that the server supports code completion
 			, completionProvider: { resolveProvider: true }
+			, colorProvider: true
+
 
 		}
 	};
@@ -245,20 +283,6 @@ connection.onDidOpenTextDocument((params) => {
 	// params.text the initial full content of the document.
 	connection.console.log(`${params.textDocument.uri} opened.`);
 });
-
-/*
-connection.onDidChangeTextDocument((params) => {
-	// The content of a text document did change in VSCode.
-	// params.uri uniquely identifies the document.
-	// params.contentChanges describe the content changes to the document.
-	connection.console.log(`${params.textDocument.uri} changed: ${JSON.stringify(params.contentChanges)}`);
-});
-connection.onDidCloseTextDocument((params) => {
-	// A text document got closed in VSCode.
-	// params.uri uniquely identifies the document.
-	connection.console.log(`${params.textDocument.uri} closed.`);
-});
-*/
 
 // Make the text document manager listen on the connection
 // for open, change and close text document events
@@ -374,24 +398,10 @@ connection.onDidChangeWatchedFiles(_change => {
 	connection.console.log('We received an file change event');
 });
 
-function completionTest(): CompletionItem[] {
-	return [
-		{
-			label: 'TypeScriptAsync',
-			kind: CompletionItemKind.Text,
-			data: 1
-		},
-		{
-			label: 'JavaScriptAsync',
-			kind: CompletionItemKind.Text,
-			data: 2
-		}
-	];
-} 
 
 // This handler provides the initial list of the completion items.
 connection.onCompletion(
-	(_textDocumentPosition: TextDocumentPositionParams): CompletionItem[] => {
+	async (_textDocumentPosition: TextDocumentPositionParams): Promise<CompletionItem[]> => {
 
 		var completeWordMsg = <Msg.CompleteWord_ClientMessage>{
 			MsgId:65,
@@ -401,11 +411,32 @@ connection.onCompletion(
 			pos: _textDocumentPosition.position.character
 		};
 
-		pipe.syncRequest.next(Serialize(completeWordMsg));
+		completionSubject = new Subject<CompletionItem[]>();
+		//completionSubject.subscribe(x => {});
 
-		return completionTest();
+		let promise = completionSubject.toPromise();
+		
+		promise.then(x => {
+			let a = 0;
+		});
+		
+		pipe.syncRequest.next(Serialize(completeWordMsg));
+		let retval = await promise;
+		return retval;
 	}
 );
+
+// connection.onColorPresentation((params) : ColorPresentation[] => {
+// 	return [{}]
+// });
+
+// connection.onDocumentColor((params: DocumentColorParams) : ColorInformation[] =>  {
+// 	return [{color: {red:255, blue:0, green: 0, alpha: 1}, range: {start:{line:0, character:0}, end :{line:0, character: 10}}}]
+// });
+
+// connection.onDocumentHighlight((_textDocumentPositionParams: TextDocumentPositionParams) : DocumentHighlight[] => {
+// 	return [<DocumentHighlight>{kind: DocumentHighlightKind.Text, range: {start: {character: 0, line:0}, end: {line:1, character:2}}}];
+// });
 
 // connection.onDocumentHighlight((_textDocumentPositionParams: TextDocumentPositionParams) : DocumentHighlight[] => {
 // 	return [{}];
