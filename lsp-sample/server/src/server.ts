@@ -19,7 +19,11 @@ import {
 	DocumentHighlightKind,
 	ColorPresentation,
 	ColorInformation,
-	DocumentColorParams
+	DocumentColorParams,
+	NotificationType0,
+	DidChangeTextDocumentParams,
+	TextDocumentSyncKind,
+	InitializeResult
 } from 'vscode-languageserver';
 
 import * as crypto from 'crypto';
@@ -30,6 +34,7 @@ import { take, filter, delay } from 'rxjs/operators';
 import * as Msg from './nitra/NitraMessages';
 import { Serialize } from './nitra/NitraSerialize';
 import { debug, log, print } from 'util';
+import { StringManager } from './utils/StringManager';
 
 // Create a connection for the server. The connection uses Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
@@ -56,8 +61,21 @@ export type Unpacked<T> =
 let pipe: Unpacked<ReturnType<typeof createPipe>>;
 
 let completionSubject: Subject<CompletionItem[]>;
+let GlobalStringIdMap = new StringManager();
 
-connection.onInitialize(async (params: InitializeParams) => {
+connection.onShutdown(() => {
+	let a = 0;
+});
+
+let projectPath = `C:\\work\\tdltest\\New suite\\test-0000\\test-0000`.toLowerCase();
+let solutionPath = `C:\\work\\tdltest\\New suite\\test-0000`.toLowerCase();
+let filePath = 'C:\\work\\tdltest\\New suite\\test-0000\\test-0000\\test-0000.test'.toLowerCase();
+
+// Make the text document manager listen on the connection
+// for open, change and close text document events
+documents.listen(connection);
+
+connection.onInitialize(async (params: InitializeParams) : Promise<InitializeResult> => {
 	let capabilities = params.capabilities;
 
 
@@ -70,7 +88,9 @@ connection.onInitialize(async (params: InitializeParams) => {
 		capabilities.textDocument.publishDiagnostics &&
 		capabilities.textDocument.publishDiagnostics.relatedInformation);
 
-	await delay(5000);
+	
+
+	//await delay(5000);
 	process.stdout.write("begin"); process.stdout.write('\r\n');
 
 
@@ -125,7 +145,6 @@ connection.onInitialize(async (params: InitializeParams) => {
 						}
 					});
 					completionSubject.next(list);
-					completionSubject.complete();
 					break;
 				}
 		}
@@ -139,7 +158,7 @@ connection.onInitialize(async (params: InitializeParams) => {
 	// subj.pipe(filter((val) => val.toString().indexOf("Attempting to connect to pipes..." ) != -1)
 	// 		, take(1))
 	// 	.subscribe(async x => {
-	process.stdout.write('create pipes'); process.stdout.write('\r\n');
+	process.stdout.write('create pipes\r\n');
 	//await timer(5000).toPromise();
 
 
@@ -147,14 +166,14 @@ connection.onInitialize(async (params: InitializeParams) => {
 	let cv = <Msg.CheckVersion_ClientMessage>{ MsgId: 42, assemblyVersionGuid: "45b8bf7d-4b94-41cc-8265-a35fdf88eb06" };
 	pipe.syncRequest.next(Serialize(cv));
 
-	let solution = <Msg.SolutionStartLoading_ClientMessage>{ MsgId: 43, id: { Value: 1 }, fullPath: `C:\\work\\tdltest\\New suite\\test-0000` };
+	let solution = <Msg.SolutionStartLoading_ClientMessage>{ MsgId: 43, id: { Value: GlobalStringIdMap.get(solutionPath) }, fullPath: solutionPath };
 	pipe.syncRequest.next(Serialize(solution));
 
 
 	let project = <Msg.ProjectStartLoading_ClientMessage>{
 		MsgId: 46,
-		id: { Value: 2 }
-		, fullPath: `c:\\work\\tdltest\\New suite\\test-0000\\test-0000`
+		id: { Value: GlobalStringIdMap.get(projectPath) }
+		, fullPath: projectPath
 		, config: {
 			MsgId: 127
 			, ProjectSupport: { MsgId: 126, Caption: "TdlLang", TypeFullName: "Tdl.ProjectSupport", Path: `C:\\work\\Nitra-TDL\\bin\\Debug\\Tdl.dll` }
@@ -177,22 +196,24 @@ connection.onInitialize(async (params: InitializeParams) => {
 
 	var fileMsg = <Msg.FileLoaded_ClientMessage>{
 		MsgId: 55
-		, fullPath: "C:\\work\\tdltest\\New suite\\test-0000\\test-0000\\test-0000.test"
-		, id: { Value: 3 }
+		, fullPath: filePath
+		, id: { Value: GlobalStringIdMap.get(filePath) }
 		, version: { Value: 0 }
-		, projectId: { Value: 2 }
+		, projectId: { Value: GlobalStringIdMap.get(projectPath) }
 		, contentOpt: ""
 		, hasContent: false
 	};
 	pipe.syncRequest.next(Serialize(fileMsg));
 
-	var projectLoadedMsg = <Msg.ProjectLoaded_ClientMessage>{ MsgId: 47, id: { Value: 2 } };
+	var projectLoadedMsg = <Msg.ProjectLoaded_ClientMessage>{ MsgId: 47, id: { Value: GlobalStringIdMap.get(projectPath) } };
 	pipe.syncRequest.next(Serialize(projectLoadedMsg));
 
-	var solutionLoadedMsg = <Msg.SolutionLoaded_ClientMessage>{ MsgId: 44, id: { Value: 1 } };
+	var solutionLoadedMsg = <Msg.SolutionLoaded_ClientMessage>{ MsgId: 44, id: { Value:  GlobalStringIdMap.get(solutionPath) } };
 	pipe.syncRequest.next(Serialize(solutionLoadedMsg));
 
-	var fileActivatedMsg = <Msg.FileActivated_ClientMessage>{ MsgId: 60, id: { Value: 3 }, projectId: { Value: 2 }, version: { Value: 0 } };
+	var fileActivatedMsg = <Msg.FileActivated_ClientMessage>{ MsgId: 60, id: { Value: GlobalStringIdMap.get(filePath) }
+																		, projectId: { Value: GlobalStringIdMap.get(projectPath) }
+																		, version: { Value: 0 } };
 	pipe.syncRequest.next(Serialize(fileActivatedMsg));
 
 
@@ -200,10 +221,10 @@ connection.onInitialize(async (params: InitializeParams) => {
 
 	return {
 		capabilities: {
-			textDocumentSync: documents.syncKind
+			textDocumentSync: TextDocumentSyncKind.Incremental
 			// Tell the client that the server supports code completion
 			, completionProvider: { resolveProvider: true }
-			, colorProvider: true
+			//, colorProvider: true
 
 
 		}
@@ -225,10 +246,7 @@ connection.onInitialized(() => {
 	}
 });
 
-// The example settings
-interface ExampleSettings {
-	maxNumberOfProblems: number;
-}
+
 
 connection.onDidChangeConfiguration(change => {
 	if (hasConfigurationCapability) {
@@ -251,8 +269,25 @@ documents.onDidClose(e => {
 
 // The content of a text document has changed. This event is emitted
 // when the text document first opened or when its content has changed.
+
 documents.onDidChangeContent(change => {
+
 	validateTextDocument(change.document);
+});
+
+connection.onDidChangeTextDocument((params) => {
+	let docs = documents;	
+	let lp = filePath;
+	let uri = decodeURIComponent(params.textDocument.uri).toLowerCase().replace('file:///', '').split('/').join('\\');
+	let fileId = GlobalStringIdMap.get(uri);
+
+	let changes = params.contentChanges.map((change, index) => {
+		if(change.text === '' && change.rangeLength > 0) {
+			
+			return <Msg.Delete_FileChange>{MsgId:117, span: {MsgId:114, StartPos:0, EndPos: 0 }};
+		}
+	});
+	let msg = <Msg.FileChanged_ClientMessage>{MsgId:62, id :{ Value: fileId}, version: {Value: params.textDocument.version}, };
 });
 
 connection.onDidChangeWatchedFiles(_change => {
@@ -281,15 +316,18 @@ connection.onDidOpenTextDocument((params) => {
 	// A text document got opened in VSCode.
 	// params.uri uniquely identifies the document. For documents store on disk this is a file URI.
 	// params.text the initial full content of the document.
-	connection.console.log(`${params.textDocument.uri} opened.`);
+	//connection.console.log(`${params.textDocument.uri} opened.`);
+	process.stdout.write(`${params.textDocument.uri} opened.\r\n`);
+	
+
 });
 
-// Make the text document manager listen on the connection
-// for open, change and close text document events
-documents.listen(connection);
+connection.onDidCloseTextDocument((params) => {
+    // A text document got closed in VS Code.
+    // params.uri uniquely identifies the document.
+});
 
-// Listen on the connection
-connection.listen();
+
 
 
 // The example settings
@@ -306,20 +344,6 @@ let globalSettings: ExampleSettings = defaultSettings;
 // Cache the settings of all open documents
 let documentSettings: Map<string, Thenable<ExampleSettings>> = new Map();
 
-connection.onDidChangeConfiguration(change => {
-	if (hasConfigurationCapability) {
-		// Reset all cached document settings
-		documentSettings.clear();
-	} else {
-		globalSettings = <ExampleSettings>(
-			(change.settings.languageServerExample || defaultSettings)
-		);
-	}
-
-	// Revalidate all open text documents
-	documents.all().forEach(validateTextDocument);
-});
-
 function getDocumentSettings(resource: string): Thenable<ExampleSettings> {
 	if (!hasConfigurationCapability) {
 		return Promise.resolve(globalSettings);
@@ -334,17 +358,6 @@ function getDocumentSettings(resource: string): Thenable<ExampleSettings> {
 	}
 	return result;
 }
-
-// Only keep settings for open documents
-documents.onDidClose(e => {
-	documentSettings.delete(e.document.uri);
-});
-
-// The content of a text document has changed. This event is emitted
-// when the text document first opened or when its content has changed.
-documents.onDidChangeContent(change => {
-	validateTextDocument(change.document);
-});
 
 async function validateTextDocument(textDocument: TextDocument): Promise<void> {
 	// In this simple example we get the settings for every validate run.
@@ -393,15 +406,8 @@ async function validateTextDocument(textDocument: TextDocument): Promise<void> {
 	connection.sendDiagnostics({ uri: textDocument.uri, diagnostics });
 }
 
-connection.onDidChangeWatchedFiles(_change => {
-	// Monitored files have change in VSCode
-	connection.console.log('We received an file change event');
-});
-
-
 // This handler provides the initial list of the completion items.
-connection.onCompletion(
-	async (_textDocumentPosition: TextDocumentPositionParams): Promise<CompletionItem[]> => {
+connection.onCompletion(async (_textDocumentPosition: TextDocumentPositionParams): Promise<CompletionItem[]> => {
 
 		var completeWordMsg = <Msg.CompleteWord_ClientMessage>{
 			MsgId:65,
@@ -414,17 +420,16 @@ connection.onCompletion(
 		completionSubject = new Subject<CompletionItem[]>();
 		//completionSubject.subscribe(x => {});
 
-		let promise = completionSubject.toPromise();
-		
-		promise.then(x => {
-			let a = 0;
-		});
+		let promise = completionSubject.pipe(take(1)).toPromise();
 		
 		pipe.syncRequest.next(Serialize(completeWordMsg));
 		let retval = await promise;
 		return retval;
 	}
 );
+
+// Listen on the connection
+connection.listen();
 
 // connection.onColorPresentation((params) : ColorPresentation[] => {
 // 	return [{}]

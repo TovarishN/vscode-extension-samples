@@ -4,7 +4,7 @@
  * ------------------------------------------------------------------------------------------ */
 
 import * as path from 'path';
-import { workspace, ExtensionContext } from 'vscode';
+import * as vscode from 'vscode';
 
 
 import {
@@ -13,10 +13,11 @@ import {
 	ServerOptions,
 	TransportKind
 } from 'vscode-languageclient';
+import { WSAECONNABORTED } from 'constants';
 
 let client: LanguageClient;
 
-export function activate(context: ExtensionContext) {
+export function activate(context: vscode.ExtensionContext) {
 
 	console.log("extension client start");
 	// The server is implemented in node
@@ -35,7 +36,7 @@ export function activate(context: ExtensionContext) {
 			module: serverModule,
 			transport: TransportKind.ipc,
 			options: debugOptions
-		}
+		},
 	};
 
 	// Options to control the language client
@@ -44,7 +45,7 @@ export function activate(context: ExtensionContext) {
 		documentSelector: [{ scheme: 'file', language: 'plaintext' }],
 		synchronize: {
 			// Notify the server about file changes to '.test files contained in the workspace
-			fileEvents: workspace.createFileSystemWatcher('**/.test')
+			fileEvents: vscode.workspace.createFileSystemWatcher('**/.test')
 		}
 	};
 
@@ -58,6 +59,14 @@ export function activate(context: ExtensionContext) {
 
 	// Start the client. This will also launch the server
 	client.start();
+
+	vscode.workspace.onDidChangeTextDocument(event => {
+		let e = event.document;
+		let editor = vscode.window.activeTextEditor;
+		let decor = vscode.window.createTextEditorDecorationType({isWholeLine: false, color: 'red'});
+		const range = new vscode.Range(0,0,0,3); 
+		editor.setDecorations(decor, [range]);
+	});
 }
 
 export function deactivate(): Thenable<void> | undefined {
