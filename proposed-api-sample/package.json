@@ -29,7 +29,9 @@
 		"compile": "tsc -p ./",
 		"lint": "tslint -p ./",
 		"watch": "tsc -watch -p ./",
-		"postinstall": "vscode-dts dev && vscode-dts master"
+		"download-api": "vscode-dts dev",
+		"postdownload-api": "vscode-dts master",
+		"postinstall": "npm run download-api"
 	},
 	"devDependencies": {
 		"@types/node": "^10.14.17",
